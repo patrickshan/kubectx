@@ -121,11 +121,21 @@ rename_context() {
 
   kubectl config rename-context "${old_name}" "${new_name}"
 }
+setup_soft_context() {
+    local soft_context="${1}"
+    local config_file=$(mktemp ${HOME}/.kube/config.soft.temp.XXXXXX)
+
+    cp ${HOME}/.kube/config ${HOME}/.kube/config.intermediate
+    kubectl config --kubeconfig ${HOME}/.kube/config.intermediate use-context ${soft_context} 2>&1 >/dev/null
+    kubectl config --kubeconfig ${HOME}/.kube/config.intermediate view --minify > ${config_file}
+    echo export KUBECONFIG=${config_file}
+
+}
 
 main() {
   if [[ "$#" -eq 0 ]]; then
     list_contexts
-  elif [[ "$#" -gt 1 ]]; then
+  elif [[ "$#" -gt 2 ]]; then
     echo "error: too many flags" >&2
     usage
   elif [[ "$#" -eq 1 ]]; then
@@ -140,6 +150,13 @@ main() {
       rename_context "${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}"
     else
       set_context "${1}"
+    fi
+  elif [[ "$#" -eq 2 ]]; then
+    if [[ "${1}" == '-s' ]]; then
+        setup_soft_context ${2}
+    else
+      echo "error: unrecognized flag \"${1}\"" >&2
+      usage
     fi
   else
     usage

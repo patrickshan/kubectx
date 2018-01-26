@@ -17,6 +17,7 @@ USAGE:
   kubectx <NAME>            : switch to context <NAME>
   kubectx -                 : switch to the previous context
   kubectx <NEW_NAME>=<NAME> : rename context <NAME> to <NEW_NAME>
+  kubectx -s <NAME>         : print a command to switch to context <NAME> for current terminal session
   kubectx -h,--help         : show this message
 ```
 
@@ -35,6 +36,9 @@ Switched to context "minikube".
 $ kubectx dublin=gke_ahmetb_europe-west1-b_dublin
 Context "dublin" set.
 Aliased "gke_ahmetb_europe-west1-b_dublin" as "dublin".
+
+$ eval $(kubectx -s minikube)
+Update current context to minikube for current terminal session
 ```
 
 `kubectx` supports <kbd>Tab</kbd> completion on bash/zsh/fish shells to help with 
