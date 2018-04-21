@@ -21,15 +21,6 @@
 set -eou pipefail
 IFS=$'\n\t'
 
-SCRIPT_DIR="$(dirname "$( readlink -f "${0}" 2>/dev/null || \
-  python -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${0}" )")"
-
-if [[ -f "${SCRIPT_DIR}/utils.bash" ]]; then
-  source "${SCRIPT_DIR}/utils.bash"
-else
-  source "${SCRIPT_DIR}/../include/utils.bash"
-fi
-
 KUBECTX="${HOME}/.kube/kubectx"
 
 usage() {
@@ -39,20 +30,36 @@ USAGE:
   kubectx <NAME>            : switch to context <NAME>
   kubectx -                 : switch to the previous context
   kubectx <NEW_NAME>=<NAME> : rename context <NAME> to <NEW_NAME>
+  kubectx <NEW_NAME>=.      : rename current-context to <NEW_NAME>
+  kubectx -d <NAME>         : delete context <NAME> ('.' for current-context)
+                              (this command won't delete the user/cluster entry
+                              that is used by the context)
+
   kubectx -h,--help         : show this message
 EOF
   exit 1
 }
 
+current_context() {
+  kubectl config view -o=jsonpath='{.current-context}'
+}
+
+get_contexts() {
+  kubectl config get-contexts -o=name | sort -n
+}
+
 list_contexts() {
   set -u pipefail
-  local cur="$(current_context)"
-  local yellow=$(tput setaf 3)
-  local darkbg=$(tput setab 0)
-  local normal=$(tput sgr0)
+  local cur
+  cur="$(current_context)"
+
+  local yellow darkbg normal
+  yellow=$(tput setaf 3)
+  darkbg=$(tput setab 0)
+  normal=$(tput sgr0)
 
   for c in $(get_contexts); do
-  if [[ "${c}" = "${cur}" ]]; then
+  if [[ -t 1 && "${c}" = "${cur}" ]]; then
     echo "${darkbg}${yellow}${c}${normal}"
   else
     echo "${c}"
@@ -67,7 +74,8 @@ read_context() {
 }
 
 save_context() {
-  local saved="$(read_context)"
+  local saved
+  saved="$(read_context)"
 
   if [[ "${saved}" != "${1}" ]]; then
     printf %s "${1}" > "${KUBECTX}"
@@ -79,7 +87,8 @@ switch_context() {
 }
 
 set_context() {
-  local prev="$(current_context)"
+  local prev
+  prev="$(current_context)"
 
   switch_context "${1}"
 
@@ -89,7 +98,8 @@ set_context() {
 }
 
 swap_context() {
-  local ctx="$(read_context)"
+  local ctx
+  ctx="$(read_context)"
   if [[ -z "${ctx}" ]]; then
     echo "error: No previous context found." >&2
     exit 1
@@ -98,25 +108,41 @@ swap_context() {
 }
 
 user_of_context() {
+  # TODO(ahmetb) no longer used, consider deleting
   kubectl config view \
     -o=jsonpath="{.contexts[?(@.name==\"${1}\")].context.user}"
 }
 
 cluster_of_context() {
+  # TODO(ahmetb) no longer used, consider deleting
   kubectl config view \
     -o=jsonpath="{.contexts[?(@.name==\"${1}\")].context.cluster}"
+}
+
+context_exists() {
+  grep -q ^"${1}"\$ <(kubectl config get-contexts -o=name)
 }
 
 rename_context() {
   local old_name="${1}"
   local new_name="${2}"
 
-  local old_user="$(user_of_context "${old_name}")"
-  local old_cluster="$(cluster_of_context "${old_name}")"
+  if [[ "${old_name}" == "." ]]; then
+    old_name="$(current_context)"
+  fi
 
+  # TODO(ahmetb) old_user and old_cluster are no longer used, clean up
+  local old_user old_cluster
+  old_user="$(user_of_context "${old_name}")"
+  old_cluster="$(cluster_of_context "${old_name}")"
   if [[ -z "$old_user" || -z "$old_cluster" ]]; then
     echo "error: Cannot retrieve context ${old_name}."  >&2
     exit 1
+  fi
+
+  if context_exists "${new_name}"; then
+    echo "Context \"${new_name}\" exists, deleting..." >&2
+    kubectl config delete-context "${new_name}" 1>/dev/null 2>&1
   fi
 
   kubectl config rename-context "${old_name}" "${new_name}"
@@ -132,9 +158,28 @@ setup_soft_context() {
 
 }
 
+delete_context() {
+  local ctx
+  ctx="${1}"
+  if [[ "${ctx}" == "." ]]; then
+    ctx="$(current_context)"
+  fi
+  echo "Deleting context \"${ctx}\"..." >&2
+  kubectl config delete-context "${ctx}"
+}
+
 main() {
   if [[ "$#" -eq 0 ]]; then
     list_contexts
+  elif [[ "${1}" == "-d" ]]; then
+    if [[ "$#" -lt 2 ]]; then
+      echo "error: missing context NAME" >&2
+      usage
+    elif [[ "$#" -gt 2 ]]; then
+      echo "error: too many arguments" >&2
+      usage
+    fi
+    delete_context "${2}"
   elif [[ "$#" -gt 2 ]]; then
     echo "error: too many flags" >&2
     usage

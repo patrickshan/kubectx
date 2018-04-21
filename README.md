@@ -1,10 +1,10 @@
 This repository provides both `kubectx` and `kubens` tools.
 
 
-**`kubectx`** help you switch between clusters back and forth:
+**`kubectx`** helps you switch between clusters back and forth:
 ![kubectx demo GIF](img/kubectx-demo.gif)
 
-**`kubens`** help you switch between Kubernetes namespaces smoothly:
+**`kubens`** helps you switch between Kubernetes namespaces smoothly:
 ![kubens demo GIF](img/kubens-demo.gif)
 
 # kubectx(1)
@@ -18,7 +18,10 @@ USAGE:
   kubectx -                 : switch to the previous context
   kubectx <NEW_NAME>=<NAME> : rename context <NAME> to <NEW_NAME>
   kubectx -s <NAME>         : print a command to switch to context <NAME> for current terminal session
-  kubectx -h,--help         : show this message
+  kubectx <NEW_NAME>=.      : rename current-context to <NEW_NAME>
+  kubectx -d <NAME>         : delete context <NAME> ('.' for current-context)
+                              (this command won't delete the user/cluster entry
+                              that is used by the context)
 ```
 
 ### Usage
@@ -41,7 +44,7 @@ $ eval $(kubectx -s minikube)
 Update current context to minikube for current terminal session
 ```
 
-`kubectx` supports <kbd>Tab</kbd> completion on bash/zsh/fish shells to help with 
+`kubectx` supports <kbd>Tab</kbd> completion on bash/zsh/fish shells to help with
 long context names. You don't have to remember full context names anymore.
 
 -----
@@ -55,7 +58,6 @@ USAGE:
   kubens                    : list the namespaces
   kubens <NAME>             : change the active namespace
   kubens -                  : switch to the previous namespace
-  kubens -h,--help          : show this message
 ```
 
 
@@ -82,7 +84,7 @@ Active namespace is "default".
 :confetti_ball: Use the [Homebrew](https://brew.sh/) package manager:
 
     brew install kubectx
-    
+
 This command will set up bash/zsh/fish completion scripts automatically.
 
 
@@ -97,7 +99,7 @@ This command will set up bash/zsh/fish completion scripts automatically.
 Since `kubectx`/`kubens` are written in Bash, you should be able to instal
 them to any POSIX environment that has Bash installed.
 
-- Download the `kubectx`, `kubens` and `utils.bash` scripts.
+- Download the `kubectx`, and `kubens` scripts.
 - Either:
   - save them all to somewhere in your `PATH`,
   - or save them to a directory, then create symlinks to `kubectx`/`kubens` from
@@ -105,19 +107,30 @@ them to any POSIX environment that has Bash installed.
 - Make `kubectx` and `kubens` executable (`chmod +x ...`)
 - Figure out how to install bash/zsh/fish [completion scripts](completion/).
 
+Example installation steps:
+
+``` bash
+sudo git clone https://github.com/ahmetb/kubectx /opt/kubectx
+sudo ln -s /opt/kubectx/kubectx /usr/local/bin/kubectx
+sudo ln -s /opt/kubectx/kubens /usr/local/bin/kubens
+```
+
 -----
 
 ####  Users
 
-| What are others saying about kubectx? | 
+| What are others saying about kubectx? |
 | ---- |
 | _“Thank you for kubectx & kubens - I use them all the time & have them in my k8s toolset to maintain happiness :) ”_ – [@pbouwer](https://twitter.com/pbouwer/status/925896377929949184) |
 | _“I can't imagine working without kubectx and especially kubens anymore. It's pure gold.”_ – [@timoreimann](https://twitter.com/timoreimann/status/925801946757419008) |
-| _“I'm liking kubectx from @ahmetb, makes it super-easy to switch #Kubernetes contexts [...]”_ &mdash; [@lizrice](https://twitter.com/lizrice/status/928556415517589505) | 
+| _“I'm liking kubectx from @ahmetb, makes it super-easy to switch #Kubernetes contexts [...]”_ &mdash; [@lizrice](https://twitter.com/lizrice/status/928556415517589505) |
 | _“Also using it on a daily basis. This and my zsh config that shows me the current k8s context 😉”_ – [@puja108](https://twitter.com/puja108/status/928742521139810305) |
 | _“Lately I've found myself using the kubens command more than kubectx. Both very useful though :-)”_ – [@stuartleeks](https://twitter.com/stuartleeks/status/928562850464907264) |
 | _“yeah kubens rocks!”_ – [@embano1](https://twitter.com/embano1/status/928698440732815360) |
 | _“Special thanks to Ahmet Alp Balkan for creating kubectx, kubens, and kubectl aliases, as these tools made my life better.”_ – [@strebeld](https://medium.com/@strebeld/5-ways-to-enhance-kubectl-ux-97c8893227a)
+
+> If you liked `kubectx`, you may like my [`kubectl-aliases`](https://github.com/ahmetb/kubectl-aliases) project, too.
+
 -----
 
 Disclaimer: This is not an official Google product.
