@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # kubectx(1) is a utility to manage and switch between kubectl contexts.
 
@@ -26,14 +26,14 @@ KUBECTX="${HOME}/.kube/kubectx"
 usage() {
   cat <<"EOF"
 USAGE:
-  kubectx                   : list the contexts
-  kubectx <NAME>            : switch to context <NAME>
-  kubectx -                 : switch to the previous context
-  kubectx <NEW_NAME>=<NAME> : rename context <NAME> to <NEW_NAME>
-  kubectx <NEW_NAME>=.      : rename current-context to <NEW_NAME>
-  kubectx -d <NAME>         : delete context <NAME> ('.' for current-context)
-                              (this command won't delete the user/cluster entry
-                              that is used by the context)
+  kubectx                       : list the contexts
+  kubectx <NAME>                : switch to context <NAME>
+  kubectx -                     : switch to the previous context
+  kubectx <NEW_NAME>=<NAME>     : rename context <NAME> to <NEW_NAME>
+  kubectx <NEW_NAME>=.          : rename current-context to <NEW_NAME>
+  kubectx -d <NAME> [<NAME...>] : delete context <NAME> ('.' for current-context)
+                                  (this command won't delete the user/cluster entry
+                                  that is used by the context)
 
   kubectx -h,--help         : show this message
 EOF
@@ -58,9 +58,13 @@ list_contexts() {
   darkbg=$(tput setab 0)
   normal=$(tput sgr0)
 
+  local cur_ctx_fg cur_ctx_bg
+  cur_ctx_fg=${KUBECTX_CURRENT_FGCOLOR:-$yellow}
+  cur_ctx_bg=${KUBECTX_CURRENT_BGCOLOR:-$darkbg}
+
   for c in $(get_contexts); do
-  if [[ -t 1 && "${c}" = "${cur}" ]]; then
-    echo "${darkbg}${yellow}${c}${normal}"
+  if [[ -t 1 && -z "${NO_COLOR:-}" && "${c}" = "${cur}" ]]; then
+    echo "${cur_ctx_bg}${cur_ctx_fg}${c}${normal}"
   else
     echo "${c}"
   fi
@@ -158,6 +162,13 @@ setup_soft_context() {
 
 }
 
+delete_contexts() {
+  IFS=' ' read -ra CTXS <<< "${1}"
+  for i in "${CTXS[@]}"; do
+    delete_context "${i}"
+  done
+}
+
 delete_context() {
   local ctx
   ctx="${1}"
@@ -174,9 +185,6 @@ main() {
   elif [[ "${1}" == "-d" ]]; then
     if [[ "$#" -lt 2 ]]; then
       echo "error: missing context NAME" >&2
-      usage
-    elif [[ "$#" -gt 2 ]]; then
-      echo "error: too many arguments" >&2
       usage
     fi
     delete_context "${2}"
