@@ -21,6 +21,7 @@
 set -eou pipefail
 IFS=$'\n\t'
 
+SELF_CMD="$0"
 KUBECTX="${HOME}/.kube/kubectx"
 
 usage() {
@@ -38,7 +39,6 @@ USAGE:
 
   kubectx -h,--help         : show this message
 EOF
-  exit 1
 }
 
 current_context() {
@@ -55,9 +55,9 @@ list_contexts() {
   cur="$(current_context)"
 
   local yellow darkbg normal
-  yellow=$(tput setaf 3)
-  darkbg=$(tput setab 0)
-  normal=$(tput sgr0)
+  yellow=$(tput setaf 3 || true)
+  darkbg=$(tput setab 0 || true)
+  normal=$(tput sgr0 || true)
 
   local cur_ctx_fg cur_ctx_bg
   cur_ctx_fg=${KUBECTX_CURRENT_FGCOLOR:-$yellow}
@@ -91,6 +91,17 @@ switch_context() {
   kubectl config use-context "${1}"
 }
 
+choose_context_interactive() {
+  local choice
+  choice="$(FZF_DEFAULT_COMMAND="${SELF_CMD}" fzf --ansi || true)"
+  if [[ -z "${choice}" ]]; then
+    echo 2>&1 "error: you did not choose any of the options"
+    exit 1
+  else
+    set_context "${choice}"
+  fi
+}
+
 set_context() {
   local prev
   prev="$(current_context)"
@@ -112,18 +123,6 @@ swap_context() {
   set_context "${ctx}"
 }
 
-user_of_context() {
-  # TODO(ahmetb) no longer used, consider deleting
-  kubectl config view \
-    -o=jsonpath="{.contexts[?(@.name==\"${1}\")].context.user}"
-}
-
-cluster_of_context() {
-  # TODO(ahmetb) no longer used, consider deleting
-  kubectl config view \
-    -o=jsonpath="{.contexts[?(@.name==\"${1}\")].context.cluster}"
-}
-
 context_exists() {
   grep -q ^"${1}"\$ <(kubectl config get-contexts -o=name)
 }
@@ -134,15 +133,6 @@ rename_context() {
 
   if [[ "${old_name}" == "." ]]; then
     old_name="$(current_context)"
-  fi
-
-  # TODO(ahmetb) old_user and old_cluster are no longer used, clean up
-  local old_user old_cluster
-  old_user="$(user_of_context "${old_name}")"
-  old_cluster="$(cluster_of_context "${old_name}")"
-  if [[ -z "$old_user" || -z "$old_cluster" ]]; then
-    echo "error: Cannot retrieve context ${old_name}."  >&2
-    exit 1
   fi
 
   if context_exists "${new_name}"; then
@@ -164,8 +154,7 @@ setup_soft_context() {
 }
 
 delete_contexts() {
-  IFS=' ' read -ra CTXS <<< "${1}"
-  for i in "${CTXS[@]}"; do
+  for i in "${@}"; do
     delete_context "${i}"
   done
 }
@@ -182,16 +171,22 @@ delete_context() {
 
 main() {
   if [[ "$#" -eq 0 ]]; then
-    list_contexts
+    if [[ -t 1 &&  -z "${KUBECTX_IGNORE_FZF:-}" && "$(type fzf &>/dev/null; echo $?)" -eq 0 ]]; then
+      choose_context_interactive
+    else
+      list_contexts
+    fi
   elif [[ "${1}" == "-d" ]]; then
     if [[ "$#" -lt 2 ]]; then
       echo "error: missing context NAME" >&2
       usage
+      exit 1
     fi
     delete_context "${2}"
   elif [[ "$#" -gt 2 ]]; then
     echo "error: too many flags" >&2
     usage
+    exit 1
   elif [[ "$#" -eq 1 ]]; then
     if [[ "${1}" == "-" ]]; then
       swap_context
@@ -200,6 +195,7 @@ main() {
     elif [[ "${1}" =~ ^-(.*) ]]; then
       echo "error: unrecognized flag \"${1}\"" >&2
       usage
+      exit 1
     elif [[ "${1}" =~ (.+)=(.+) ]]; then
       rename_context "${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}"
     else
@@ -214,6 +210,7 @@ main() {
     fi
   else
     usage
+    exit 1
   fi
 }
 

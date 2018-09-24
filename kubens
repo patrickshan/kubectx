@@ -21,6 +21,7 @@
 set -eou pipefail
 IFS=$'\n\t'
 
+SELF_CMD="$0"
 KUBENS_DIR="${HOME}/.kube/kubens"
 
 usage() {
@@ -31,7 +32,6 @@ USAGE:
   kubens -                  : switch to the previous namespace in this context
   kubens -h,--help          : show this message
 EOF
-  exit 1
 }
 
 current_namespace() {
@@ -86,6 +86,25 @@ switch_namespace() {
   echo "Active namespace is \"${2}\".">&2
 }
 
+choose_namespace_interactive() {
+  # directly calling kubens via fzf might fail with a cryptic error like
+  # "$FZF_DEFAULT_COMMAND failed", so try to see if we can list namespaces
+  # locally first
+  if [[ -z "$(list_namespaces)" ]]; then
+    echo >&2 "error: could not list namespaces (is the cluster accessible?)"
+    exit 1
+  fi
+
+  local choice
+  choice="$(FZF_DEFAULT_COMMAND="${SELF_CMD}" fzf --ansi || true)"
+  if [[ -z "${choice}" ]]; then
+    echo 2>&1 "error: you did not choose any of the options"
+    exit 1
+  else
+    set_namespace "${choice}"
+  fi
+}
+
 set_namespace() {
   local ctx prev
   ctx="$(current_context)"
@@ -105,9 +124,9 @@ set_namespace() {
 
 list_namespaces() {
   local yellow darkbg normal
-  yellow=$(tput setaf 3)
-  darkbg=$(tput setab 0)
-  normal=$(tput sgr0)
+  yellow=$(tput setaf 3 || true)
+  darkbg=$(tput setab 0 || true)
+  normal=$(tput sgr0 || true)
 
   local cur_ctx_fg cur_ctx_bg
   cur_ctx_fg=${KUBECTX_CURRENT_FGCOLOR:-$yellow}
@@ -138,7 +157,11 @@ swap_namespace() {
 
 main() {
   if [[ "$#" -eq 0 ]]; then
-    list_namespaces
+    if [[ -t 1 && -z ${KUBECTX_IGNORE_FZF:-} && "$(type fzf &>/dev/null; echo $?)" -eq 0 ]]; then
+      choose_namespace_interactive
+    else
+      list_namespaces
+    fi
   elif [[ "$#" -eq 1 ]]; then
     if [[ "${1}" == '-h' || "${1}" == '--help' ]]; then
       usage
@@ -147,6 +170,7 @@ main() {
     elif [[ "${1}" =~ ^-(.*) ]]; then
       echo "error: unrecognized flag \"${1}\"" >&2
       usage
+      exit 1
     elif [[ "${1}" =~ (.+)=(.+) ]]; then
       alias_context "${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}"
     else
@@ -155,6 +179,7 @@ main() {
   else
     echo "error: too many flags" >&2
     usage
+    exit 1
   fi
 }
 
