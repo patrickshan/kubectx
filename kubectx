@@ -146,9 +146,10 @@ setup_soft_context() {
     local soft_context="${1}"
     local config_file=$(mktemp ${HOME}/.kube/config.soft.temp.XXXXXX)
 
-    cp ${HOME}/.kube/config ${HOME}/.kube/config.intermediate
+    # copy the config to a new file since we don't want to update default current-context config everywhere
+    cp ${HOME}/.kube/config ${HOME}/.kube/config.tmp
     kubectl config --kubeconfig ${HOME}/.kube/config.intermediate use-context ${soft_context} 2>&1 >/dev/null
-    kubectl config --kubeconfig ${HOME}/.kube/config.intermediate view --minify > ${config_file}
+    kubectl config --kubeconfig ${HOME}/.kube/config.intermediate view --raw --minify > ${config_file}
     echo export KUBECONFIG=${config_file}
 
 }
