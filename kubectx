@@ -145,6 +145,8 @@ rename_context() {
 setup_soft_context() {
     local soft_context="${1}"
     local config_file=$(mktemp ${HOME}/.kube/config.soft.temp.XXXXXX)
+    # delete temp soft config file older than 7 days
+    find ${HOME}/.kube -name "config.soft.temp.*" -mtime +7 -exec rm {} \;
 
     # copy the config to a new file since we don't want to update default current-context config everywhere
     cp ${HOME}/.kube/config ${HOME}/.kube/config.tmp
