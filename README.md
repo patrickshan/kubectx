@@ -87,10 +87,6 @@ Active namespace is "default".
 
 This command will set up bash/zsh/fish completion scripts automatically.
 
-
-- Running `brew install` with `--with-short-names` will install tools with names
-`kctx` and `kns` to prevent prefix collision with `kubectl` name.
-
 - If you like to add context/namespace info to your shell prompt (`$PS1`),
   I recommend trying out [kube-ps1](https://github.com/jonmosco/kube-ps1).
 
@@ -131,8 +127,13 @@ them to any POSIX environment that has Bash installed.
     export PATH=~/.kubectx:\$PATH
     FOE
     ```
-  - For fish: Figure out how to install completion scripts and please document here
-  
+  - For fish:
+    ```fish
+    mkdir -p ~/.config/fish/completions
+    ln -s /opt/kubectx/completion/kubectx.fish ~/.config/fish/completions/
+    ln -s /opt/kubectx/completion/kubens.fish ~/.config/fish/completions/
+    ```
+
 Example installation steps:
 
 ``` bash
@@ -206,4 +207,4 @@ Disclaimer: This is not an official Google product.
 #### Stargazers over time
 
 [![Stargazers over time](https://starcharts.herokuapp.com/ahmetb/kubectx.svg)](https://starcharts.herokuapp.com/ahmetb/kubectx)
-
+![Google Analytics](https://ga-beacon.appspot.com/UA-2609286-17/kubectx/README?pixel)

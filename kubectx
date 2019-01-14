@@ -22,7 +22,7 @@ set -eou pipefail
 IFS=$'\n\t'
 
 SELF_CMD="$0"
-KUBECTX="${HOME}/.kube/kubectx"
+KUBECTX="${XDG_CACHE_HOME:-$HOME/.kube}/kubectx"
 
 usage() {
   cat <<"EOF"
@@ -41,18 +41,24 @@ USAGE:
 EOF
 }
 
+exit_err() {
+   echo >&2 "${1}"
+   exit 1
+}
+
 current_context() {
-  kubectl config view -o=jsonpath='{.current-context}'
+  $KUBECTL config view -o=jsonpath='{.current-context}'
 }
 
 get_contexts() {
-  kubectl config get-contexts -o=name | sort -n
+  $KUBECTL config get-contexts -o=name | sort -n
 }
 
 list_contexts() {
   set -u pipefail
-  local cur
-  cur="$(current_context)"
+  local cur ctx_list
+  cur="$(current_context)" || exit_err "error getting current context"
+  ctx_list=$(get_contexts) || exit_err "error getting context list"
 
   local yellow darkbg normal
   yellow=$(tput setaf 3 || true)
@@ -63,9 +69,15 @@ list_contexts() {
   cur_ctx_fg=${KUBECTX_CURRENT_FGCOLOR:-$yellow}
   cur_ctx_bg=${KUBECTX_CURRENT_BGCOLOR:-$darkbg}
 
-  for c in $(get_contexts); do
-  if [[ -t 1 && -z "${NO_COLOR:-}" && "${c}" = "${cur}" ]]; then
-    echo "${cur_ctx_bg}${cur_ctx_fg}${c}${normal}"
+  for c in $ctx_list; do
+  if [[ -n "${_KUBECTX_FORCE_COLOR:-}" || \
+       -t 1 && -z "${NO_COLOR:-}" ]]; then
+    # colored output mode
+    if [[ "${c}" = "${cur}" ]]; then
+      echo "${cur_ctx_bg}${cur_ctx_fg}${c}${normal}"
+    else
+      echo "${c}"
+    fi
   else
     echo "${c}"
   fi
@@ -88,12 +100,14 @@ save_context() {
 }
 
 switch_context() {
-  kubectl config use-context "${1}"
+  $KUBECTL config use-context "${1}"
 }
 
 choose_context_interactive() {
   local choice
-  choice="$(FZF_DEFAULT_COMMAND="${SELF_CMD}" fzf --ansi || true)"
+  choice="$(_KUBECTX_FORCE_COLOR=1 \
+    FZF_DEFAULT_COMMAND="${SELF_CMD}" \
+    fzf --ansi || true)"
   if [[ -z "${choice}" ]]; then
     echo 2>&1 "error: you did not choose any of the options"
     exit 1
@@ -104,7 +118,7 @@ choose_context_interactive() {
 
 set_context() {
   local prev
-  prev="$(current_context)"
+  prev="$(current_context)" || exit_err "error getting current context"
 
   switch_context "${1}"
 
@@ -124,7 +138,7 @@ swap_context() {
 }
 
 context_exists() {
-  grep -q ^"${1}"\$ <(kubectl config get-contexts -o=name)
+  grep -q ^"${1}"\$ <($KUBECTL config get-contexts -o=name)
 }
 
 rename_context() {
@@ -137,10 +151,10 @@ rename_context() {
 
   if context_exists "${new_name}"; then
     echo "Context \"${new_name}\" exists, deleting..." >&2
-    kubectl config delete-context "${new_name}" 1>/dev/null 2>&1
+    $KUBECTL config delete-context "${new_name}" 1>/dev/null 2>&1
   fi
 
-  kubectl config rename-context "${old_name}" "${new_name}"
+  $KUBECTL config rename-context "${old_name}" "${new_name}"
 }
 setup_soft_context() {
     local soft_context="${1}"
@@ -166,13 +180,22 @@ delete_context() {
   local ctx
   ctx="${1}"
   if [[ "${ctx}" == "." ]]; then
-    ctx="$(current_context)"
+    ctx="$(current_context)" || exit_err "error getting current context"
   fi
   echo "Deleting context \"${ctx}\"..." >&2
-  kubectl config delete-context "${ctx}"
+  $KUBECTL config delete-context "${ctx}"
 }
 
 main() {
+  if hash kubectl 2>/dev/null; then
+    KUBECTL=kubectl
+  elif hash kubectl.exe 2>/dev/null; then
+    KUBECTL=kubectl.exe
+  else
+    echo >&2 "kubectl is not installed"
+    exit 1
+  fi
+
   if [[ "$#" -eq 0 ]]; then
     if [[ -t 1 &&  -z "${KUBECTX_IGNORE_FZF:-}" && "$(type fzf &>/dev/null; echo $?)" -eq 0 ]]; then
       choose_context_interactive
