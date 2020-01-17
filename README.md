@@ -1,4 +1,13 @@
+# `kubectx` + `kubens`: Power tools for kubectl
+
+![Latest GitHub release](https://img.shields.io/github/release/ahmetb/kubectx.svg)
+![GitHub stars](https://img.shields.io/github/stars/ahmetb/kubectx.svg?label=github%20stars)
+![Travis (.org) branch](https://img.shields.io/travis/ahmetb/kubectx/master.svg)
+![Proudly written in Bash](https://img.shields.io/badge/written%20in-bash-ff69b4.svg)
+
+
 This repository provides both `kubectx` and `kubens` tools.
+[Install &rarr;](#installation)
 
 
 **`kubectx`** helps you switch between clusters back and forth:
@@ -9,13 +18,14 @@ This repository provides both `kubectx` and `kubens` tools.
 
 # kubectx(1)
 
-kubectx is an utility to manage and switch between kubectl(1) contexts.
+kubectx is a utility to manage and switch between kubectl(1) contexts.
 
 ```
 USAGE:
   kubectx                   : list the contexts
   kubectx <NAME>            : switch to context <NAME>
   kubectx -                 : switch to the previous context
+  kubectx -c, --current     : show the current context name
   kubectx <NEW_NAME>=<NAME> : rename context <NAME> to <NEW_NAME>
   kubectx -s <NAME>         : print a command to switch to context <NAME> for current terminal session
   kubectx <NEW_NAME>=.      : rename current-context to <NEW_NAME>
@@ -51,13 +61,14 @@ long context names. You don't have to remember full context names anymore.
 
 # kubens(1)
 
-kubens is an utility to switch between Kubernetes namespaces.
+kubens is a utility to switch between Kubernetes namespaces.
 
 ```
 USAGE:
   kubens                    : list the namespaces
   kubens <NAME>             : change the active namespace
   kubens -                  : switch to the previous namespace
+  kubens -c, --current      : show the current namespace
 ```
 
 
@@ -79,9 +90,36 @@ Active namespace is "default".
 
 ## Installation
 
+There are several installation options:
+
+- As kubectl plugins (macOS/Linux)
+- macOS
+  - Homebrew (recommended)
+  - MacPorts
+- Linux
+  - manual installation/upgrades
+  - Arch Linux
+  - Debian/Ubuntu
+
+### Kubectl Plugins (macOS and Linux)
+
+You can install and use [Krew](https://github.com/kubernetes-sigs/krew/) kubectl
+plugin manager to get `kubectx` and `kubens`. **NOTE:** This will not install
+shell completion scripts, if you want those, choose another installation method
+below.
+
+```sh
+kubectl krew install ctx
+kubectl krew install ns
+```
+
+After installing, the tools will be available as `kubectl ctx` and `kubectl ns`.
+
 ### macOS
 
-:confetti_ball: Use the [Homebrew](https://brew.sh/) package manager:
+#### Homebrew
+
+:confetti_ball: If you use [Homebrew](https://brew.sh/) you can install like this:
 
     brew install kubectx
 
@@ -90,9 +128,15 @@ This command will set up bash/zsh/fish completion scripts automatically.
 - If you like to add context/namespace info to your shell prompt (`$PS1`),
   I recommend trying out [kube-ps1](https://github.com/jonmosco/kube-ps1).
 
+#### MacPorts
+
+If you use [MacPorts](https://www.macports.org) you can install like this:
+
+    sudo port install kubectx
+
 ### Linux
 
-Since `kubectx`/`kubens` are written in Bash, you should be able to instal
+Since `kubectx`/`kubens` are written in Bash, you should be able to install
 them to any POSIX environment that has Bash installed.
 
 - Download the `kubectx`, and `kubens` scripts.
@@ -111,8 +155,8 @@ them to any POSIX environment that has Bash installed.
     ln -s /opt/kubectx/completion/kubectx.zsh ~/.oh-my-zsh/completions/_kubectx.zsh
     ln -s /opt/kubectx/completion/kubens.zsh ~/.oh-my-zsh/completions/_kubens.zsh
     ```  
-    Note that the leading underscore seems to be a convention.  
-    If not using oh-my-zsh, you could link to `/usr/share/zsh/functions/Completion` (might require sudo), depending on the `$fpath` of your zsh installation.  
+    Note that the leading underscore seems to be a convention. If completion doesn't work, add `autoload -U compinit && compinit` to your `.zshrc` (similar to [`zsh-completions`](https://github.com/zsh-users/zsh-completions/blob/master/README.md#oh-my-zsh)).
+    If not using oh-my-zsh, you could link to `/usr/share/zsh/functions/Completion` (might require sudo), depending on the `$fpath` of your zsh installation.
     In case of error, calling `compaudit` might help.
   - For bash:
     ```bash
@@ -144,9 +188,11 @@ sudo ln -s /opt/kubectx/kubens /usr/local/bin/kubens
 
 #### Arch Linux
 
-An unofficial [AUR package](https://aur.archlinux.org/packages/kubectx) `kubectx`
-is available. Install instructions can be found on the [Arch 
-wiki](https://wiki.archlinux.org/index.php/Arch_User_Repository#Installing_packages).
+Available as official Arch Linux package. Install it via:
+
+```bash
+sudo pacman -S kubectx
+```
 
 #### Debian/Ubuntu
 
@@ -177,7 +223,7 @@ If you like to customize the colors indicating the current namespace or context,
 
 ```
 export KUBECTX_CURRENT_FGCOLOR=$(tput setaf 6) # blue text
-export KUBECTX_CURRENT_BGCOLOR=$(tput setaf 7) # white background
+export KUBECTX_CURRENT_BGCOLOR=$(tput setab 7) # white background
 ```
 
 Colors in the output can be disabled by setting the
@@ -195,7 +241,8 @@ Colors in the output can be disabled by setting the
 | _“Also using it on a daily basis. This and my zsh config that shows me the current k8s context 😉”_ – [@puja108](https://twitter.com/puja108/status/928742521139810305) |
 | _“Lately I've found myself using the kubens command more than kubectx. Both very useful though :-)”_ – [@stuartleeks](https://twitter.com/stuartleeks/status/928562850464907264) |
 | _“yeah kubens rocks!”_ – [@embano1](https://twitter.com/embano1/status/928698440732815360) |
-| _“Special thanks to Ahmet Alp Balkan for creating kubectx, kubens, and kubectl aliases, as these tools made my life better.”_ – [@strebeld](https://medium.com/@strebeld/5-ways-to-enhance-kubectl-ux-97c8893227a)
+| _“Special thanks to Ahmet Alp Balkan for creating kubectx, kubens, and kubectl aliases, as these tools made my life better.”_ – [@strebeld](https://medium.com/@strebeld/5-ways-to-enhance-kubectl-ux-97c8893227a) |
+| _“❤️ this shell script @ahmetb wrote to help make switching between kubectl config contexts a breeze.”_ – [@briandanowski](https://twitter.com/briandanowski/status/1085409568165896193) |
 
 > If you liked `kubectx`, you may like my [`kubectl-aliases`](https://github.com/ahmetb/kubectl-aliases) project, too.
 
