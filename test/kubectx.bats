@@ -1,18 +1,8 @@
 #!/usr/bin/env bats
 
-COMMAND="$BATS_TEST_DIRNAME/../kubectx"
+COMMAND="${COMMAND:-$BATS_TEST_DIRNAME/../kubectx}"
 
 load common
-
-@test "no kubectl detected" {
-  OLDPATH="$PATH"
-  PATH=/bin
-  run ${COMMAND}
-  echo "$output"
-  [ "$status" -eq 1 ]
-  [[ "$output" = "kubectl is not installed" ]]
-  PATH="$OLDPATH"
-}
 
 @test "--help should not fail" {
   run ${COMMAND} --help
@@ -32,14 +22,14 @@ load common
   run ${COMMAND} -
   echo "$output"
   [ "$status" -eq 1 ]
-  [[ "$output" = "error: No previous context found." ]]
+  [[ $output = *"no previous context found" ]]
 }
 
 @test "list contexts when no kubeconfig exists" {
   run ${COMMAND}
   echo "$output"
   [ "$status" -eq 0 ]
-  [[ "$output" = "" ]]
+  [[ "$output" = "warning: kubeconfig file not found" ]]
 }
 
 @test "get one context and list contexts" {
@@ -238,4 +228,17 @@ load common
   echo "$output"
   [ "$status" -eq 0 ]
   [[ "$output" = "user2@cluster1" ]]
+}
+
+@test "unset selected context" {
+  use_config config2
+
+  run ${COMMAND} user1@cluster1
+  [ "$status" -eq 0 ]
+
+  run ${COMMAND} -u
+  [ "$status" -eq 0 ]
+
+  run ${COMMAND} -c
+  [ "$status" -ne 0 ]
 }
