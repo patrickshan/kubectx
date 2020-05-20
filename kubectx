@@ -177,10 +177,18 @@ setup_soft_context() {
 
     # copy the config to a new file since we don't want to update default current-context config everywhere
     cp ${HOME}/.kube/config ${HOME}/.kube/config.tmp
-    kubectl config --kubeconfig ${HOME}/.kube/config.tmp use-context ${soft_context} 2>&1 >/dev/null
-    kubectl config --kubeconfig ${HOME}/.kube/config.tmp view --raw --minify > ${config_file}
-    echo export KUBECONFIG=${config_file}
-
+    $KUBECTL config --kubeconfig ${HOME}/.kube/config.tmp use-context ${soft_context} 2>&1 >/dev/null
+    $KUBECTL config --kubeconfig ${HOME}/.kube/config.tmp view --raw --minify > ${config_file}
+    export KUBECONFIG=${config_file}
+    token_expire_time=$(yq r $KUBECONFIG 'users[0].user.token' | cut -d'.' -f2 | base64 -d | jq '.exp')
+    current_time=$(date +'%s')
+    if [[ $current_time -gt $(expr $token_expire_time - 1800) ]]
+    then
+        echo "Need to renew token"
+    else
+        echo "Use existing token"
+    fi
+    exec $SHELL
 }
 
 delete_contexts() {
